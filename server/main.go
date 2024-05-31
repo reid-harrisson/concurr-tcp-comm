@@ -56,14 +56,7 @@ func handleConnection(conn net.Conn) {
 	log.Println("Received data:", string(buf[:n]))
 
 	// Write a response to the connection
-	_, err = conn.Write([]byte("Hello, client!"))
-	if err != nil {
-		log.Println("Failed to write to connection:", err)
-		return
-	}
-
-	// Write a response to the connection
-	_, err = conn.Write([]byte("Hello, client!"))
+	_, err = conn.Write([]byte(buf[:n]))
 	if err != nil {
 		log.Println("Failed to write to connection:", err)
 		return

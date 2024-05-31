@@ -1,14 +1,13 @@
 package main
 
 import (
-	msg "bring-your-test/models"
-	"encoding/json"
+	conn "bring-your-test/connection"
 	"log"
 	"math/rand"
-	"net"
 	"os"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/joho/godotenv"
@@ -36,9 +35,18 @@ func main() {
 	// Add 3 goroutines to the WaitGroup
 	waitGroup.Add(clientCount)
 
+	// Create a channel
+	channel := make(chan string)
+
 	// Run the goroutines
 	for i := 0; i < clientCount; i++ {
-		go handleConnection(serverPort, &waitGroup)
+		go handleConnection(serverPort, &waitGroup, "", channel)
+	}
+
+	// Retry connections
+	for uuid := range channel {
+		waitGroup.Add(1)
+		go handleConnection(serverPort, &waitGroup, uuid, channel)
 	}
 
 	// Wait for all goroutines to finish
@@ -100,9 +108,15 @@ var mockMessages = []string{
 	"The pufferfish inflated itself to scare away predators.",
 }
 
-func handleConnection(serverPort string, waitGroup *sync.WaitGroup) {
+func handleConnection(serverPort string, waitGroup *sync.WaitGroup, prevUUID string, channel chan string) {
+	// Get the current time
+	startTime := time.Now()
+
 	// Generate a new UUID
-	clientUUID := uuid.New()
+	clientUUID := prevUUID
+	if clientUUID == "" {
+		clientUUID = uuid.New().String()
+	}
 
 	// Handle goroutine completion
 	defer waitGroup.Done()
@@ -110,34 +124,29 @@ func handleConnection(serverPort string, waitGroup *sync.WaitGroup) {
 	log.Printf("Client (%s) goroutine started\n", clientUUID)
 
 	// Connect to the TCP server
-	connection, err := net.Dial("tcp", ":"+serverPort)
+	handler, err := conn.Create(":" + serverPort)
 	if err != nil {
-		log.Println("Failed to connect to server:", err)
 		return
 	}
-	defer connection.Close()
+	defer handler.Close()
 
 	// Create modelMessage
-	modelMessage := msg.Message{
-		UUID:   clientUUID.String(),
-		Prefix: "message",
-		Data:   mockMessages[rand.Intn(len(mockMessages))],
-	}
-	jsonMessage, _ := json.Marshal(modelMessage)
+	handler.Send(clientUUID, "connect", mockMessages[rand.Intn(len(mockMessages))])
 
-	// Send data to the server
-	_, err = connection.Write([]byte(jsonMessage))
-	if err != nil {
-		log.Println("Error writing to connection:", err)
-		return
-	}
-
-	// Read the response from the server
 	for {
-		response := make([]byte, 1024)
-		jsonResponse, err := connection.Read(response)
+		// Close connection after 60s
+		currentTime := time.Now()
+		if currentTime.Sub(startTime) >= 5*time.Second {
+			defer func(channel chan string, uuid string) {
+				channel <- uuid
+			}(channel, clientUUID)
+			return
+		}
+
+		// Read the response from the server
+		modelMessage, err := handler.Receive()
 		if err == nil {
-			log.Printf("Received response: %s\n", response[:jsonResponse])
+			log.Println(modelMessage)
 		}
 	}
 }
