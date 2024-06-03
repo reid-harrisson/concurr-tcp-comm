@@ -1,0 +1,64 @@
+package main
+
+import (
+	cli "bring-your-test/client"
+	"bring-your-test/pkgs/consts"
+	srv "bring-your-test/server"
+	"log"
+	"strconv"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+)
+
+func TestClient(t *testing.T) {
+
+	// Get the values of the environment variables
+	serverPort := "8000"
+	assert.Equal(t, "8000", serverPort)
+
+	clientCount, err := strconv.Atoi("1")
+	if assert.Equal(t, nil, err) {
+		assert.Equal(t, 1, clientCount)
+	}
+	if err != nil {
+		log.Println("Failed to load enviroment.")
+		return
+	}
+
+	server := srv.Create()
+	go server.Run(serverPort)
+
+	time.Sleep(time.Second * 2)
+
+	// Create a WaitGroup
+	var waitGroup sync.WaitGroup
+	waitGroup.Add(clientCount)
+
+	// Initialize
+	clients := []*cli.Client{}
+
+	// Create clients
+	for i := 0; i < clientCount; i++ {
+		clients = append(clients, cli.Create())
+	}
+
+	// Run clients
+	for _, client := range clients {
+		go client.Run(serverPort, &waitGroup)
+	}
+
+	// Wait for all clients finished
+	waitGroup.Wait()
+	log.Println("All clients finished.")
+
+	assert.Equal(t, consts.MockUUID, clients[0].MessagesReceived[0].UUID)
+	assert.Equal(t, "message", clients[0].MessagesReceived[0].Prefix)
+	assert.Equal(t, consts.MockUUID, clients[0].MessagesReceived[1].UUID)
+	assert.Equal(t, "ok", clients[0].MessagesReceived[1].Prefix)
+
+	// Wait for server closed
+	log.Println("Server finished.")
+}
