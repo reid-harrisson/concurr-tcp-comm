@@ -46,16 +46,16 @@ func main() {
 
 	// Create clients
 	for i := 0; i < clientCount; i++ {
-		clients = append(clients, cli.Create())
+		clients = append(clients, cli.Create(i+1))
 	}
 
 	// Run clients
-	randCount := rand.Intn(100)
+	randCount := rand.Intn(80)
 	for index, client := range clients {
 		go client.Run(serverPort, &waitGroup, sessionTime)
 		if index == randCount {
-			// randTime := rand.Intn(10) + 10
-			time.Sleep(time.Second * 10)
+			randTime := rand.Intn(55) + 5
+			time.Sleep(time.Second * time.Duration(randTime))
 		}
 	}
 

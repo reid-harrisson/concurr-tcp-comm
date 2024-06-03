@@ -43,7 +43,7 @@ func TestClient(t *testing.T) {
 
 	// Create clients
 	for i := 0; i < clientCount; i++ {
-		clients = append(clients, cli.Create())
+		clients = append(clients, cli.Create(i+1))
 	}
 
 	// Run clients

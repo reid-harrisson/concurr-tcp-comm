@@ -1,10 +1,27 @@
 package consts
 
-import "math/rand"
+import (
+	msg "bringyour-test/pkgs/models"
+	"math/rand"
+	"strings"
+)
 
 const (
 	MockUUID = "########-####-####-####-############"
 )
+
+func ShortMessage(message msg.Message) string {
+	if message.Prefix == "message" && message.UUID == MockUUID {
+		return "message X"
+	} else if message.Prefix == "message" && message.UUID != MockUUID {
+		return "message Y"
+	} else if message.Prefix == "ok" && message.UUID == MockUUID {
+		return "ok X"
+	} else if message.Prefix == "ok" && message.UUID != MockUUID {
+		return "ok Y"
+	}
+	return strings.ToUpper(message.Prefix)
+}
 
 func RandomMessage() string {
 	var messages = []string{

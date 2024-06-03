@@ -93,11 +93,12 @@ func (server *Server) DeleteClient(clientUUID string) {
 	server.ClientUUIDs.Delete(size - 1)
 	server.ActiveHandlers.Delete(clientUUID)
 	server.ClientUUIDs.Store("size", size-1)
-	log.Println(clientUUID, "- clients -", size)
 }
 
 func (server *Server) HandleConnection(handler *conn.ConnectionHandler) {
 	defer handler.Close()
+
+	log.Println("New client connected.")
 
 	clientUUID := uuid.New().String()
 
@@ -114,17 +115,21 @@ func (server *Server) HandleConnection(handler *conn.ConnectionHandler) {
 			server.DeleteClient(clientUUID)
 			return
 		}
-
+		if receivedMessage.Prefix == "message" || receivedMessage.Prefix == "ok" {
+			log.Printf("Server received %s.\n", consts.ShortMessage(receivedMessage))
+		}
 		if receivedMessage.Prefix == "message" {
 			randIndex := rand.Intn(ValueInt(&server.ClientUUIDs, "size"))
 			randUUID := ValueString(&server.ClientUUIDs, randIndex)
 			randHandler := ValueHandler(&server.ActiveHandlers, randUUID)
 			if randHandler != nil {
 				randHandler.Send(receivedMessage)
+				log.Printf("Server sent %s.\n", consts.ShortMessage(receivedMessage))
 			}
 		} else if receivedMessage.Prefix == "ok" {
 			if receivedMessage.UUID == consts.MockUUID {
 				handler.Send(receivedMessage)
+				log.Printf("Server sent %s.\n", consts.ShortMessage(receivedMessage))
 				server.DeleteClient(clientUUID)
 				receivedMessage.Prefix = "close"
 				handler.Send(receivedMessage)
@@ -135,6 +140,7 @@ func (server *Server) HandleConnection(handler *conn.ConnectionHandler) {
 				selectedHandler := ValueHandler(&server.ActiveHandlers, uuid)
 				if selectedHandler != nil {
 					selectedHandler.Send(receivedMessage)
+					log.Printf("Server sent %s.\n", consts.ShortMessage(receivedMessage))
 				}
 			}
 		} else if receivedMessage.Prefix == "close" {
