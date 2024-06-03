@@ -4,6 +4,7 @@ import (
 	cli "bringyour-test/client"
 	srv "bringyour-test/server"
 	"log"
+	"math/rand"
 	"os"
 	"strconv"
 	"sync"
@@ -31,6 +32,11 @@ func main() {
 		log.Println("Failed to load enviroment.")
 		return
 	}
+	sessionTime, err := strconv.Atoi(os.Getenv("SESSION_TIME"))
+	if err != nil {
+		log.Println("Failed to load enviroment.")
+		return
+	}
 
 	server := srv.Create()
 	go server.Run(serverPort)
@@ -50,8 +56,13 @@ func main() {
 	}
 
 	// Run clients
-	for _, client := range clients {
-		go client.Run(serverPort, &waitGroup)
+	randCount := rand.Intn(100)
+	for index, client := range clients {
+		go client.Run(serverPort, &waitGroup, sessionTime)
+		if index == randCount {
+			randTime := rand.Intn(55) + 5
+			time.Sleep(time.Second * time.Duration(randTime))
+		}
 	}
 
 	// Wait for all clients finished

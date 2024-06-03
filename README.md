@@ -18,10 +18,22 @@ go get
 
 - Rename `.env.example` to `.env`
 
-- Run this app using follow command.
+- Run client and server at the same computer using this command.
 
 ```bash
 go run ./cmd
+```
+
+- Run server using this command.
+
+```bash
+go run ./cmd/server
+```
+
+- Run client using this command.
+
+```bash
+go run ./cmd/client
 ```
 
 Server is running on 8000 and 10 clients are running on different ports.

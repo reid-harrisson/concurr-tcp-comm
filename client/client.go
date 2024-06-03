@@ -23,7 +23,7 @@ func Create() *Client {
 	}
 }
 
-func (client *Client) HandleConnection(serverPort string, message string) {
+func (client *Client) HandleConnection(serverPort string, message string, sessionTime int) {
 	// Connect to the TCP server
 	handler, err := conn.Create(":" + serverPort)
 	if err != nil {
@@ -33,7 +33,7 @@ func (client *Client) HandleConnection(serverPort string, message string) {
 	}
 
 	// Close connection after 60s
-	timer := time.NewTimer(time.Second * consts.SessionTime)
+	timer := time.NewTimer(time.Second * time.Duration(sessionTime))
 	defer timer.Stop()
 
 	// Buffered channel to store received data from the client
@@ -55,6 +55,10 @@ func (client *Client) HandleConnection(serverPort string, message string) {
 			receivedMessage, err := handler.Receive()
 			if err != nil {
 				// log.Println("-- failed to receive --", err)
+				break
+			}
+
+			if receivedMessage.Prefix == "close" {
 				break
 			}
 
@@ -101,13 +105,13 @@ func (client *Client) HandleConnection(serverPort string, message string) {
 	}
 }
 
-func (client *Client) Run(serverPort string, waitGroup *sync.WaitGroup) {
-	go client.HandleConnection(serverPort, consts.RandomMessage())
+func (client *Client) Run(serverPort string, waitGroup *sync.WaitGroup, sessionTime int) {
+	go client.HandleConnection(serverPort, consts.RandomMessage(), sessionTime)
 	for message := range client.ReconnectChannel {
 		if message == "" {
 			break
 		}
-		go client.HandleConnection(serverPort, message)
+		go client.HandleConnection(serverPort, message, sessionTime)
 	}
 	waitGroup.Done()
 }

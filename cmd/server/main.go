@@ -4,7 +4,6 @@ import (
 	srv "bringyour-test/server"
 	"log"
 	"os"
-	"strconv"
 	"sync"
 
 	"github.com/joho/godotenv"
@@ -24,15 +23,10 @@ func main() {
 		log.Println("Failed to load enviroment.")
 		return
 	}
-	clientCount, err := strconv.Atoi(os.Getenv("CLIENT_COUNT"))
-	if err != nil {
-		log.Println("Failed to load enviroment.")
-		return
-	}
 
 	// Create a WaitGroup
 	var waitGroup sync.WaitGroup
-	waitGroup.Add(clientCount)
+	waitGroup.Add(1)
 
 	server := srv.Create()
 	go server.Run(serverPort)

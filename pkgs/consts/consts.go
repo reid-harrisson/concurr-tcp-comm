@@ -3,8 +3,7 @@ package consts
 import "math/rand"
 
 const (
-	MockUUID    = "########-####-####-####-############"
-	SessionTime = 5
+	MockUUID = "########-####-####-####-############"
 )
 
 func RandomMessage() string {

@@ -27,6 +27,7 @@ func TestClient(t *testing.T) {
 		log.Println("Failed to load enviroment.")
 		return
 	}
+	sessionTime := 10
 
 	server := srv.Create()
 	go server.Run(serverPort)
@@ -47,7 +48,7 @@ func TestClient(t *testing.T) {
 
 	// Run clients
 	for _, client := range clients {
-		go client.Run(serverPort, &waitGroup)
+		go client.Run(serverPort, &waitGroup, sessionTime)
 	}
 
 	// Wait for all clients finished

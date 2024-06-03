@@ -3,9 +3,11 @@ package main
 import (
 	cli "bringyour-test/client"
 	"log"
+	"math/rand"
 	"os"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/joho/godotenv"
 )
@@ -29,6 +31,11 @@ func main() {
 		log.Println("Failed to load enviroment.")
 		return
 	}
+	sessionTime, err := strconv.Atoi(os.Getenv("SESSION_TIME"))
+	if err != nil {
+		log.Println("Failed to load enviroment.")
+		return
+	}
 
 	// Create a WaitGroup
 	var waitGroup sync.WaitGroup
@@ -43,8 +50,13 @@ func main() {
 	}
 
 	// Run clients
-	for _, client := range clients {
-		go client.Run(serverPort, &waitGroup)
+	randCount := rand.Intn(100)
+	for index, client := range clients {
+		go client.Run(serverPort, &waitGroup, sessionTime)
+		if index == randCount {
+			// randTime := rand.Intn(10) + 10
+			time.Sleep(time.Second * 10)
+		}
 	}
 
 	// Wait for all clients finished
