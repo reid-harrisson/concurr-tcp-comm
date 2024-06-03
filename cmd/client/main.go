@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/joho/godotenv"
 )
@@ -43,8 +44,11 @@ func main() {
 	}
 
 	// Run clients
-	for _, client := range clients {
+	for index, client := range clients {
 		go client.Run(serverPort, &waitGroup)
+		if index%100 == 99 {
+			time.Sleep(5 * time.Second)
+		}
 	}
 
 	// Wait for all clients finished

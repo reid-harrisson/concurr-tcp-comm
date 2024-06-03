@@ -27,7 +27,7 @@ func (client *Client) HandleConnection(serverPort string, message string) {
 	// Connect to the TCP server
 	handler, err := conn.Create(":" + serverPort)
 	if err != nil {
-		log.Println("--- failed to create ---")
+		log.Println("--- failed to create -", err, "---")
 		client.ReconnectChannel <- ""
 		return
 	}

@@ -4,7 +4,6 @@ import (
 	"bringyour-test/pkgs/consts"
 	msg "bringyour-test/pkgs/models"
 	"encoding/json"
-	"io"
 	"log"
 	"net"
 	"strings"
@@ -30,7 +29,7 @@ func ShortMessage(message msg.Message) string {
 func Create(url string) (*ConnectionHandler, error) {
 	connection, err := net.Dial("tcp", url)
 	if err != nil {
-		log.Println("Failed to connect to server:", err)
+		// log.Println("Failed to connect to server:", err)
 		return nil, err
 	}
 	log.Println("-", connection.LocalAddr(), connection.RemoteAddr(), "- create -")
@@ -42,7 +41,7 @@ func Create(url string) (*ConnectionHandler, error) {
 func CreateByListenr(listener net.Listener) (*ConnectionHandler, error) {
 	connection, err := listener.Accept()
 	if err != nil {
-		log.Println("Failed to accept connection:", err)
+		// log.Println("Failed to accept connection:", err)
 		return nil, err
 	}
 	log.Println("-", connection.LocalAddr(), connection.RemoteAddr(), "- create -")
@@ -63,7 +62,7 @@ func (handler *ConnectionHandler) Send(modelMessage msg.Message) error {
 	// Send data to the server
 	_, err := handler.Connection.Write([]byte(jsonMessage))
 	if err != nil {
-		log.Println("Error writing to connection:", err)
+		// log.Println("Error writing to connection:", err)
 		return err
 	}
 	log.Println("-", handler.Connection.LocalAddr(), handler.Connection.RemoteAddr(), "- sent -", ShortMessage(modelMessage), "-")
@@ -74,9 +73,6 @@ func (handler *ConnectionHandler) Receive() (msg.Message, error) {
 	// Read the response from the server
 	response := make([]byte, 1024)
 	size, err := handler.Connection.Read(response)
-	if size == 0 || err == io.EOF {
-		// log.Println("-- disconnected")
-	}
 	if err != nil {
 		return msg.Message{}, err
 	}
