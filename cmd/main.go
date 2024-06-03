@@ -1,11 +1,13 @@
 package main
 
 import (
-	cli "bring-your-test/client/client"
+	cli "bring-your-test/client"
+	srv "bring-your-test/server"
 	"log"
 	"os"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/joho/godotenv"
 )
@@ -29,19 +31,17 @@ func main() {
 		log.Println("Failed to load enviroment.")
 		return
 	}
-	connectSessionTime, err := strconv.Atoi(os.Getenv("CLIENT_COUNT"))
-	if err != nil {
-		log.Println("Failed to load enviroment.")
-		return
-	}
+
+	server := srv.Create()
+	go server.Run(serverPort)
+
+	time.Sleep(time.Second * 5)
 
 	// Create a WaitGroup
 	var waitGroup sync.WaitGroup
-
-	// Add 3 goroutines to the WaitGroup
-	log.Println("waitGroup +", clientCount)
 	waitGroup.Add(clientCount)
 
+	// Initialize
 	clients := []*cli.Client{}
 
 	// Create clients
@@ -51,11 +51,13 @@ func main() {
 
 	// Run clients
 	for _, client := range clients {
-		go client.Run(serverPort, &waitGroup, connectSessionTime)
+		go client.Run(serverPort, &waitGroup)
 	}
 
-	// Wait for all goroutines to finish
+	// Wait for all clients finished
 	waitGroup.Wait()
+	log.Println("All clients finished.")
 
-	log.Println("All goroutines finished")
+	// Wait for server closed
+	log.Println("Server finished.")
 }

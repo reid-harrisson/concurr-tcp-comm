@@ -1,7 +1,8 @@
 package conn
 
 import (
-	msg "bring-your-test/models"
+	"bring-your-test/pkgs/consts"
+	msg "bring-your-test/pkgs/models"
 	"encoding/json"
 	"io"
 	"log"
@@ -13,16 +14,14 @@ type ConnectionHandler struct {
 	Connection net.Conn
 }
 
-var mockUUID = "########-####-####-####-############"
-
 func ShortMessage(message msg.Message) string {
-	if message.Prefix == "message" && message.UUID == mockUUID {
+	if message.Prefix == "message" && message.UUID == consts.MockUUID {
 		return "MX"
-	} else if message.Prefix == "message" && message.UUID != mockUUID {
+	} else if message.Prefix == "message" && message.UUID != consts.MockUUID {
 		return "MY"
-	} else if message.Prefix == "ok" && message.UUID == mockUUID {
+	} else if message.Prefix == "ok" && message.UUID == consts.MockUUID {
 		return "OX"
-	} else if message.Prefix == "ok" && message.UUID != mockUUID {
+	} else if message.Prefix == "ok" && message.UUID != consts.MockUUID {
 		return "OY"
 	}
 	return strings.ToUpper(message.Prefix)
@@ -76,7 +75,7 @@ func (handler *ConnectionHandler) Receive() (msg.Message, error) {
 	response := make([]byte, 1024)
 	size, err := handler.Connection.Read(response)
 	if size == 0 || err == io.EOF {
-		log.Println("-- disconnected")
+		// log.Println("-- disconnected")
 	}
 	if err != nil {
 		return msg.Message{}, err

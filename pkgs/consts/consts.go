@@ -1,28 +1,14 @@
-package cli
+package consts
 
-import (
-	conn "bring-your-test/connection"
-	msg "bring-your-test/models"
-	"log"
-	"math/rand"
-	"sync"
-	"time"
+import "math/rand"
+
+const (
+	MockUUID    = "########-####-####-####-############"
+	SessionTime = 5
 )
 
-type Client struct {
-	Handler          *conn.ConnectionHandler
-	ReconnectChannel chan string
-}
-
-func Create() *Client {
-	return &Client{
-		Handler:          nil,
-		ReconnectChannel: make(chan string),
-	}
-}
-
-var (
-	mockMessages = []string{
+func RandomMessage() string {
+	var messages = []string{
 		"Simplicity is the ultimate sophistication.",
 		"The noblest pleasure is the joy of understanding.",
 		"Realize that everything connects to everything else.",
@@ -64,92 +50,5 @@ var (
 		"Look deep into nature, and then you will understand everything better.",
 		"The most incomprehensible thing about the universe is that it is comprehensible.",
 	}
-	mockUUID = "########-####-####-####-############"
-)
-
-func (client *Client) Routine(serverPort string, message string, connectSessionTime int) {
-	// Connect to the TCP server
-	handler, err := conn.Create(":" + serverPort)
-	if err != nil {
-		log.Println("--- failed to create ---")
-		client.ReconnectChannel <- ""
-		return
-	}
-
-	// Close connection after 60s
-	timer := time.NewTimer(time.Duration(connectSessionTime * int(time.Second)))
-	defer timer.Stop()
-
-	// Buffered channel to store received data from the client
-	messageChannel := make(chan msg.Message, 1)
-
-	err = handler.Send(msg.Message{
-		UUID:    mockUUID,
-		Prefix:  "message",
-		Message: message,
-	})
-	if err != nil {
-		handler.Close()
-		client.ReconnectChannel <- ""
-		return
-	}
-
-	go func() {
-		for {
-			receivedMessage, err := handler.Receive()
-			if err != nil {
-				log.Println("-- failed to receive --", err)
-				break
-			}
-
-			if receivedMessage.Prefix == "close" {
-				break
-			}
-			messageChannel <- receivedMessage
-			if receivedMessage.Prefix == "ok" && receivedMessage.UUID == mockUUID {
-				break
-			}
-		}
-		close(messageChannel)
-		log.Println("-- receive goroutine finished --")
-	}()
-
-	for {
-		select {
-		case receivedMessage := <-messageChannel:
-			if receivedMessage.Prefix == "ok" && receivedMessage.UUID == mockUUID {
-				log.Println("--- close by OX condition ---")
-				handler.Close()
-				client.ReconnectChannel <- ""
-				return
-			}
-			if receivedMessage.Prefix == "message" {
-				receivedMessage.Prefix = "ok"
-			}
-			handler.Send(receivedMessage)
-
-		case <-timer.C:
-			log.Println("--- close by timer ---")
-			handler.Send(msg.Message{
-				Prefix:  "close",
-				UUID:    mockUUID,
-				Message: "",
-			})
-			handler.Close()
-			client.ReconnectChannel <- message
-			return
-		}
-	}
-}
-
-func (client *Client) Run(serverPort string, waitGroup *sync.WaitGroup, connectionSessionTime int) {
-	message := mockMessages[rand.Intn(len(mockMessages))]
-	go client.Routine(serverPort, message, connectionSessionTime)
-	for message := range client.ReconnectChannel {
-		if message == "" {
-			break
-		}
-		go client.Routine(serverPort, message, connectionSessionTime)
-	}
-	waitGroup.Done()
+	return messages[rand.Intn(len(messages))]
 }
