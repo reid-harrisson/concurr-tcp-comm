@@ -58,11 +58,6 @@ func (client *Client) HandleConnection(serverPort string, message string) {
 				break
 			}
 
-			// Close routine if receive close message
-			if receivedMessage.Prefix == "close" {
-				break
-			}
-
 			// Update message received history
 			client.MessagesReceived = append(client.MessagesReceived, receivedMessage)
 

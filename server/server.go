@@ -47,8 +47,6 @@ func (server *Server) Run(serverPort string) {
 	}
 }
 
-var max = 0
-
 func ValueString(values *sync.Map, key any) string {
 	data, ok := values.Load(key)
 	if !ok {
@@ -87,11 +85,6 @@ func ValueHandler(values *sync.Map, key any) *conn.ConnectionHandler {
 
 func (server *Server) DeleteClient(clientUUID string) {
 	size := ValueInt(&server.ClientUUIDs, "size")
-	if size > max {
-		max = size
-	} else {
-		max++
-	}
 	index := ValueInt(&server.ClientUUIDs, clientUUID)
 	lastUUID := ValueString(&server.ClientUUIDs, size-1)
 	server.ClientUUIDs.Store(lastUUID, index)
@@ -100,7 +93,7 @@ func (server *Server) DeleteClient(clientUUID string) {
 	server.ClientUUIDs.Delete(size - 1)
 	server.ActiveHandlers.Delete(clientUUID)
 	server.ClientUUIDs.Store("size", size-1)
-	log.Println(clientUUID, max, "- clients -", size)
+	log.Println(clientUUID, "- clients -", size)
 }
 
 func (server *Server) HandleConnection(handler *conn.ConnectionHandler) {
