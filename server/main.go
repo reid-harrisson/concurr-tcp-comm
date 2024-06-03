@@ -1,10 +1,13 @@
 package main
 
 import (
+	conn "bring-your-test/connection"
 	"log"
+	"math/rand"
 	"net"
 	"os"
 
+	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 )
 
@@ -28,37 +31,80 @@ func main() {
 
 	log.Println("Server listening on port " + serverPort)
 
+	clientUUIDs := []string{}
+	activeHandlers := map[string]*conn.ConnectionHandler{}
+
 	for {
-		// Wait for a connection
-		connection, err := listener.Accept()
+		// Wait for a handler
+		handler, err := conn.CreateByListenr(listener)
 		if err != nil {
-			log.Println("Failed to accept connection:", err)
 			continue
 		}
 
 		// Handle the connection in a new goroutine
-		go handleConnection(connection)
+		go handleConnection(handler, &clientUUIDs, &activeHandlers)
 	}
 }
 
-func handleConnection(conn net.Conn) {
-	defer conn.Close()
+var mockUUID = "########-####-####-####-############"
 
-	// Read data from the connection
-	buf := make([]byte, 1024)
-	n, err := conn.Read(buf)
-	if err != nil {
-		log.Println("Failed to read from connection:", err)
-		return
+func deleteClient(clientUUID string, clientUUIDs *[]string, activeHandlers *map[string]*conn.ConnectionHandler) {
+	log.Println(clientUUID, "- before -", len(*clientUUIDs), len(*activeHandlers))
+	newClientUUIDs := []string{}
+	for _, client := range *clientUUIDs {
+		if client != clientUUID {
+			newClientUUIDs = append(newClientUUIDs, client)
+		}
 	}
+	*clientUUIDs = newClientUUIDs
+	_, ok := (*activeHandlers)[clientUUID]
+	if ok {
+		delete((*activeHandlers), clientUUID)
+	}
+	log.Println(clientUUID, "- after -", len(*clientUUIDs), len(*activeHandlers))
+}
 
-	// Print the received data
-	log.Println("Received data:", string(buf[:n]))
+func handleConnection(handler *conn.ConnectionHandler, clientUUIDs *[]string, activeHandlers *map[string]*conn.ConnectionHandler) {
+	defer handler.Close()
 
-	// Write a response to the connection
-	_, err = conn.Write([]byte(buf[:n]))
-	if err != nil {
-		log.Println("Failed to write to connection:", err)
-		return
+	clientUUID := uuid.New().String()
+
+	(*clientUUIDs) = append((*clientUUIDs), clientUUID)
+	(*activeHandlers)[clientUUID] = handler
+
+	// Buffered channel to store received data from the client
+	for {
+		receivedMessage, err := handler.Receive()
+		if err != nil {
+			log.Println("- error -", err)
+			deleteClient(clientUUID, clientUUIDs, activeHandlers)
+			return
+		}
+
+		if receivedMessage.Prefix == "message" {
+			randUUID := (*clientUUIDs)[rand.Intn(len(*clientUUIDs))]
+			if randUUID != clientUUID {
+				receivedMessage.UUID = randUUID
+			}
+			(*activeHandlers)[randUUID].Send(receivedMessage)
+		} else if receivedMessage.Prefix == "ok" {
+			log.Println("- if prefix == ok -")
+			if receivedMessage.UUID == mockUUID {
+				log.Println("- if uuid == mockUUID -")
+				handler.Send(receivedMessage)
+				deleteClient(clientUUID, clientUUIDs, activeHandlers)
+				receivedMessage.Prefix = "close"
+				handler.Send(receivedMessage)
+				return
+			} else {
+				uuid := receivedMessage.UUID
+				receivedMessage.UUID = mockUUID
+				(*activeHandlers)[uuid].Send(receivedMessage)
+			}
+		} else if receivedMessage.Prefix == "close" {
+			deleteClient(clientUUID, clientUUIDs, activeHandlers)
+			handler.Send(receivedMessage)
+			return
+		}
 	}
 }

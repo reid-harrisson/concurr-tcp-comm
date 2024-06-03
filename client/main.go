@@ -2,6 +2,7 @@ package main
 
 import (
 	conn "bring-your-test/connection"
+	msg "bring-your-test/models"
 	"log"
 	"math/rand"
 	"os"
@@ -9,9 +10,11 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 )
+
+var clients = 0
+var clientChannel = make(chan int)
 
 func main() {
 
@@ -23,7 +26,16 @@ func main() {
 
 	// Get the values of the environment variables
 	serverPort := os.Getenv("SERVER_PORT")
+	if serverPort == "" {
+		log.Println("Failed to load enviroment.")
+		return
+	}
 	clientCount, err := strconv.Atoi(os.Getenv("CLIENT_COUNT"))
+	if err != nil {
+		log.Println("Failed to load enviroment.")
+		return
+	}
+	connectSessionTime, err := strconv.Atoi(os.Getenv("CLIENT_COUNT"))
 	if err != nil {
 		log.Println("Failed to load enviroment.")
 		return
@@ -33,21 +45,36 @@ func main() {
 	var waitGroup sync.WaitGroup
 
 	// Add 3 goroutines to the WaitGroup
+	log.Println("waitGroup +", clientCount)
 	waitGroup.Add(clientCount)
 
 	// Create a channel
 	channel := make(chan string)
 
+	clients = clientCount
 	// Run the goroutines
 	for i := 0; i < clientCount; i++ {
-		go handleConnection(serverPort, &waitGroup, "", channel)
+		go handleConnection(serverPort, &waitGroup, "", channel, connectSessionTime)
 	}
 
 	// Retry connections
-	for uuid := range channel {
-		waitGroup.Add(1)
-		go handleConnection(serverPort, &waitGroup, uuid, channel)
+	for {
+		select {
+		case message := <-channel:
+			waitGroup.Add(1)
+			go handleConnection(serverPort, &waitGroup, message, channel, connectSessionTime)
+		case count := <-clientChannel:
+			log.Println("--------------------------------", count)
+			if count == 0 {
+				return
+			}
+		}
 	}
+
+	// for message := range channel {
+	// 	waitGroup.Add(1)
+	// 	go handleConnection(serverPort, &waitGroup, message, channel, connectSessionTime)
+	// }
 
 	// Wait for all goroutines to finish
 	waitGroup.Wait()
@@ -55,98 +82,139 @@ func main() {
 	log.Println("All goroutines finished")
 }
 
-var mockMessages = []string{
-	"The lion roared loudly in the jungle.",
-	"The tiger stealthily stalked its prey.",
-	"The elephant sprayed itself with water using its trunk.",
-	"The giraffe gracefully walked across the savanna.",
-	"The zebra's black and white stripes stood out against the grass.",
-	"The monkey swung from branch to branch in the canopy.",
-	"The koala slept peacefully in the eucalyptus tree.",
-	"The panda chomped on bamboo shoots in the bamboo forest.",
-	"The kangaroo hopped across the Australian outback.",
-	"The gorilla beat its chest in a display of strength.",
-	"The cheetah sprinted across the plains at top speed.",
-	"The grizzly bear caught salmon in the rushing river.",
-	"The hippopotamus wallowed in the muddy river.",
-	"The rhinoceros charged through the grasslands.",
-	"The crocodile sunbathed on the riverbank with its jaws wide open.",
-	"The alligator's eyes glinted in the water as it lurked.",
-	"The leopard camouflaged itself among the tree branches.",
-	"The orangutan swung gracefully through the rainforest trees.",
-	"The dolphin leaped out of the water in a graceful arc.",
-	"The penguin waddled clumsily across the snowy ice.",
-	"The octopus changed color to blend in with its surroundings.",
-	"The seahorse floated gently among the seagrass.",
-	"The jellyfish glowed in the dark depths of the ocean.",
-	"The chimpanzee groomed its companion in the treetops.",
-	"The ostrich raced across the African savanna.",
-	"The flamingo stood on one leg in the shallow waters of the lake.",
-	"The polar bear hunted seals on the sea ice.",
-	"The red panda curled up in a ball in its tree nest.",
-	"The sloth moved slowly through the treetops.",
-	"The Komodo dragon basked in the sun on Komodo Island.",
-	"The parrot squawked loudly in the jungle canopy.",
-	"The toucan's brightly colored beak caught the sunlight.",
-	"The platypus swam gracefully in the river.",
-	"The meerkat stood guard on its hind legs in the desert.",
-	"The armadillo rolled up into a tight ball for protection.",
-	"The corgi herded sheep on the farm with enthusiasm.",
-	"The tabby cat purred contentedly in its owner's lap.",
-	"The blue whale breached the surface of the ocean with a mighty splash.",
-	"The wolf howled at the full moon in the night.",
-	"The fox darted among the bushes in search of prey.",
-	"The otter slid into the water and began to play.",
-	"The hedgehog curled into a spiky ball for defense.",
-	"The peacock fanned out its iridescent feathers in a display.",
-	"The bald eagle soared high in the sky on majestic wings.",
-	"The raccoon scavenged for food in the trash cans at night.",
-	"The walrus basked on the beach with its tusks gleaming.",
-	"The alpaca nibbled on grass in the fields of the Andes.",
-	"The llama spit in annoyance at a pesky visitor.",
-	"The emu sprinted across the Australian outback.",
-	"The pufferfish inflated itself to scare away predators.",
+var (
+	mockMessages = []string{
+		"Simplicity is the ultimate sophistication.",
+		"The noblest pleasure is the joy of understanding.",
+		"Realize that everything connects to everything else.",
+		"Learning never exhausts the mind.",
+		"The greatest deception men suffer is from their own opinions.",
+		"Intellectual passion drives out sensuality.",
+		"Small steps are the fastest path to achieving great goals.",
+		"It had long since come to my attention that people of accomplishment rarely sat back and let things happen to them. They went out and happened to things.",
+		"Obstacles cannot crush me. Every obstacle yields to stern resolve.",
+		"I have been impressed with the urgency of doing. Knowing is not enough; we must apply. Being willing is not enough; we must do.",
+		"Art is never finished, only abandoned.",
+		"The greatest geniuses sometimes accomplish more when they work less.",
+		"The function of muscle is to pull, not to push, except in the case of the genitals and the tongue.",
+		"The human foot is a masterpiece of engineering and a work of art.",
+		"I love those who can smile in trouble, who can gather strength from distress, and grow brave by reflection.",
+		"Time stays long enough for those who use it.",
+		"Painting is poetry that is seen rather than felt, and poetry is painting that is felt rather than seen.",
+		"The human bird shall take his first flight, filling the world with amazement, all writings with his fame, and bringing eternal glory to the nest whence he sprang.",
+		"Dwell on the beauty of life. Watch the stars, and see yourself running with them.",
+		"You can have no dominion greater or less than that over yourself.",
+		"The most beautiful thing we can experience is the mysterious. It is the source of all true art and all science.",
+		"Imagination is more important than knowledge.",
+		"The only source of knowledge is experience.",
+		"The only way to do great work is to love what you do.",
+		"Everything should be made as simple as possible, but not simpler.",
+		"The important thing is not to stop questioning. Curiosity has its own reason for existing.",
+		"The true sign of intelligence is not knowledge but imagination.",
+		"In the middle of difficulty lies opportunity.",
+		"The most beautiful experience we can have is the mysterious.",
+		"I have no special talent. I am only passionately curious.",
+		"The only limit to our realization of tomorrow will be our doubts of today.",
+		"The world as we have created it is a process of our thinking. It cannot be changed without changing our thinking.",
+		"Try not to become a man of success, but rather try to become a man of value.",
+		"The measure of intelligence is the ability to change.",
+		"Education is what remains after one has forgotten what one has learned in school.",
+		"The person who follows the crowd will usually go no further than the crowd. The person who walks alone is likely to find himself in places no one has ever been.",
+		"Two things are infinite: the universe and human stupidity; and I'm not sure about the universe.",
+		"Insanity is doing the same thing over and over again and expecting different results.",
+		"Look deep into nature, and then you will understand everything better.",
+		"The most incomprehensible thing about the universe is that it is comprehensible.",
+	}
+	mockUUID = "########-####-####-####-############"
+)
+
+func closeClient(waitGroup *sync.WaitGroup, handler *conn.ConnectionHandler) {
+	handler.Close()
+	waitGroup.Done()
+	log.Println("--- close client ---")
 }
 
-func handleConnection(serverPort string, waitGroup *sync.WaitGroup, prevUUID string, channel chan string) {
-	// Get the current time
-	startTime := time.Now()
-
-	// Generate a new UUID
-	clientUUID := prevUUID
-	if clientUUID == "" {
-		clientUUID = uuid.New().String()
-	}
-
-	// Handle goroutine completion
-	defer waitGroup.Done()
-	defer log.Printf("Client (%s) goroutine finished\n", clientUUID)
-	log.Printf("Client (%s) goroutine started\n", clientUUID)
-
+func handleConnection(serverPort string, waitGroup *sync.WaitGroup, message string, reconnectChannel chan string, connectSessionTime int) {
 	// Connect to the TCP server
 	handler, err := conn.Create(":" + serverPort)
 	if err != nil {
+		log.Println("--- failed to create ---")
+		waitGroup.Done()
 		return
 	}
-	defer handler.Close()
 
-	// Create modelMessage
-	handler.Send(clientUUID, "connect", mockMessages[rand.Intn(len(mockMessages))])
+	// Initialize message
+	if message == "" {
+		message = mockMessages[rand.Intn(len(mockMessages))]
+	}
+
+	// Close connection after 60s
+	timer := time.NewTimer(time.Duration(connectSessionTime * int(time.Second)))
+	defer timer.Stop()
+
+	// Buffered channel to store received data from the client
+	messageChannel := make(chan msg.Message, 1)
+
+	err = handler.Send(msg.Message{
+		UUID:    mockUUID,
+		Prefix:  "message",
+		Message: message,
+	})
+	if err != nil {
+		closeClient(waitGroup, handler)
+		return
+	}
+
+	go func(handler *conn.ConnectionHandler, channel chan msg.Message, waitGroup *sync.WaitGroup) {
+		for {
+			receivedMessage, err := handler.Receive()
+			if err != nil {
+				log.Println("-- failed to receive --", err)
+				break
+			}
+
+			if receivedMessage.Prefix == "close" {
+				break
+			}
+			messageChannel <- receivedMessage
+			if receivedMessage.Prefix == "ok" && receivedMessage.UUID == mockUUID {
+				break
+			}
+		}
+		close(messageChannel)
+		log.Println("-- receive goroutine finished --")
+	}(handler, messageChannel, waitGroup)
 
 	for {
-		// Close connection after 60s
-		currentTime := time.Now()
-		if currentTime.Sub(startTime) >= 5*time.Second {
-			defer func(channel chan string, uuid string) {
-				channel <- uuid
-			}(channel, clientUUID)
-			return
-		}
+		select {
+		case receivedMessage, isOpened := <-messageChannel:
+			if !isOpened {
+				log.Println("--- message channel closed ---")
+				waitGroup.Done()
+				return
+			}
+			if receivedMessage.Prefix == "ok" && receivedMessage.UUID == mockUUID {
+				log.Println("--- close by OX condition ---")
+				closeClient(waitGroup, handler)
+				clients--
+				clientChannel <- clients
+				return
+			}
+			if receivedMessage.Prefix == "message" {
+				receivedMessage.Prefix = "ok"
+			}
+			handler.Send(receivedMessage)
 
-		// Read the response from the server
-		modelMessage, err := handler.Receive()
-		if err == nil {
-			log.Println(modelMessage)
+		case <-timer.C:
+			log.Println("--- close by timer ---")
+			handler.Send(msg.Message{
+				Prefix:  "close",
+				UUID:    mockUUID,
+				Message: "",
+			})
+			closeClient(waitGroup, handler)
+			reconnectChannel <- message
+			return
 		}
 	}
 }
