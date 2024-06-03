@@ -1,9 +1,9 @@
 package main
 
 import (
-	cli "bring-your-test/client"
-	"bring-your-test/pkgs/consts"
-	srv "bring-your-test/server"
+	cli "bringyour-test/client"
+	"bringyour-test/pkgs/consts"
+	srv "bringyour-test/server"
 	"log"
 	"strconv"
 	"sync"

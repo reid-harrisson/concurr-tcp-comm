@@ -1,8 +1,8 @@
 package srv
 
 import (
-	conn "bring-your-test/pkgs/connection"
-	"bring-your-test/pkgs/consts"
+	conn "bringyour-test/pkgs/connection"
+	"bringyour-test/pkgs/consts"
 	"log"
 	"math/rand"
 	"net"
@@ -11,13 +11,15 @@ import (
 )
 
 type Server struct {
-	ClientUUIDs    []string
+	ClientUUIDs    map[string]int
+	ClientIndex    map[int]string
 	ActiveHandlers map[string]*conn.ConnectionHandler
 }
 
 func Create() *Server {
 	return &Server{
-		ClientUUIDs:    []string{},
+		ClientIndex:    map[int]string{},
+		ClientUUIDs:    map[string]int{},
 		ActiveHandlers: map[string]*conn.ConnectionHandler{},
 	}
 }
@@ -46,19 +48,16 @@ func (server *Server) Run(serverPort string) {
 }
 
 func (server *Server) DeleteClient(clientUUID string) {
-	// log.Println(clientUUID, "- before -", len(server.ClientUUIDs), len(server.ActiveHandlers))
-	newClientUUIDs := []string{}
-	for _, client := range server.ClientUUIDs {
-		if client != clientUUID {
-			newClientUUIDs = append(newClientUUIDs, client)
-		}
-	}
-	server.ClientUUIDs = newClientUUIDs
-	_, ok := server.ActiveHandlers[clientUUID]
-	if ok {
-		delete(server.ActiveHandlers, clientUUID)
-	}
-	// log.Println(clientUUID, "- after -", len(server.ClientUUIDs), len(server.ActiveHandlers))
+	log.Println(clientUUID, "- before -", len(server.ClientUUIDs), len(server.ClientIndex), len(server.ActiveHandlers))
+	size := len(server.ClientUUIDs)
+	index := server.ClientUUIDs[clientUUID]
+	lastUUID := server.ClientIndex[size-1]
+	server.ClientUUIDs[lastUUID] = index
+	server.ClientIndex[index] = lastUUID
+	delete(server.ClientUUIDs, clientUUID)
+	delete(server.ClientIndex, size-1)
+	delete(server.ActiveHandlers, clientUUID)
+	log.Println(clientUUID, "- after -", len(server.ClientUUIDs), len(server.ClientIndex), len(server.ActiveHandlers))
 }
 
 func (server *Server) HandleConnection(handler *conn.ConnectionHandler) {
@@ -66,7 +65,8 @@ func (server *Server) HandleConnection(handler *conn.ConnectionHandler) {
 
 	clientUUID := uuid.New().String()
 
-	server.ClientUUIDs = append(server.ClientUUIDs, clientUUID)
+	server.ClientUUIDs[clientUUID] = len(server.ClientUUIDs)
+	server.ClientIndex[len(server.ClientIndex)] = clientUUID
 	server.ActiveHandlers[clientUUID] = handler
 
 	// Buffered channel to store received data from the client
@@ -78,10 +78,8 @@ func (server *Server) HandleConnection(handler *conn.ConnectionHandler) {
 		}
 
 		if receivedMessage.Prefix == "message" {
-			randUUID := server.ClientUUIDs[rand.Intn(len(server.ClientUUIDs))]
-			if randUUID != clientUUID {
-				receivedMessage.UUID = randUUID
-			}
+			randIndex := rand.Intn(len(server.ClientUUIDs))
+			randUUID := server.ClientIndex[randIndex]
 			server.ActiveHandlers[randUUID].Send(receivedMessage)
 		} else if receivedMessage.Prefix == "ok" {
 			if receivedMessage.UUID == consts.MockUUID {

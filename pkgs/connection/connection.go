@@ -1,8 +1,8 @@
 package conn
 
 import (
-	"bring-your-test/pkgs/consts"
-	msg "bring-your-test/pkgs/models"
+	"bringyour-test/pkgs/consts"
+	msg "bringyour-test/pkgs/models"
 	"encoding/json"
 	"io"
 	"log"

@@ -1,13 +1,11 @@
 package main
 
 import (
-	cli "bringyour-test/client"
 	srv "bringyour-test/server"
 	"log"
 	"os"
 	"strconv"
 	"sync"
-	"time"
 
 	"github.com/joho/godotenv"
 )
@@ -32,32 +30,15 @@ func main() {
 		return
 	}
 
-	server := srv.Create()
-	go server.Run(serverPort)
-
-	time.Sleep(time.Second * 5)
-
 	// Create a WaitGroup
 	var waitGroup sync.WaitGroup
 	waitGroup.Add(clientCount)
 
-	// Initialize
-	clients := []*cli.Client{}
-
-	// Create clients
-	for i := 0; i < clientCount; i++ {
-		clients = append(clients, cli.Create())
-	}
-
-	// Run clients
-	for _, client := range clients {
-		go client.Run(serverPort, &waitGroup)
-	}
-
-	// Wait for all clients finished
-	waitGroup.Wait()
-	log.Println("All clients finished.")
+	server := srv.Create()
+	go server.Run(serverPort)
 
 	// Wait for server closed
+	waitGroup.Wait()
+
 	log.Println("Server finished.")
 }

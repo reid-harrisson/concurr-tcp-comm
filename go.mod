@@ -1,4 +1,4 @@
-module bring-your-test
+module bringyour-test
 
 go 1.22.1
 

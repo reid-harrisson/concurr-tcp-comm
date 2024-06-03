@@ -1,9 +1,9 @@
 package cli
 
 import (
-	conn "bring-your-test/pkgs/connection"
-	consts "bring-your-test/pkgs/consts"
-	msg "bring-your-test/pkgs/models"
+	conn "bringyour-test/pkgs/connection"
+	consts "bringyour-test/pkgs/consts"
+	msg "bringyour-test/pkgs/models"
 	"log"
 	"sync"
 	"time"
@@ -23,7 +23,7 @@ func Create() *Client {
 	}
 }
 
-func (client *Client) Routine(serverPort string, message string) {
+func (client *Client) HandleConnection(serverPort string, message string) {
 	// Connect to the TCP server
 	handler, err := conn.Create(":" + serverPort)
 	if err != nil {
@@ -58,13 +58,17 @@ func (client *Client) Routine(serverPort string, message string) {
 				break
 			}
 
-			// Update message received history
-			client.MessagesReceived = append(client.MessagesReceived, receivedMessage)
-
+			// Close routine if receive close message
 			if receivedMessage.Prefix == "close" {
 				break
 			}
+
+			// Update message received history
+			client.MessagesReceived = append(client.MessagesReceived, receivedMessage)
+
 			messageChannel <- receivedMessage
+
+			// Close routine in OX condition
 			if receivedMessage.Prefix == "ok" && receivedMessage.UUID == consts.MockUUID {
 				break
 			}
@@ -103,12 +107,12 @@ func (client *Client) Routine(serverPort string, message string) {
 }
 
 func (client *Client) Run(serverPort string, waitGroup *sync.WaitGroup) {
-	go client.Routine(serverPort, consts.RandomMessage())
+	go client.HandleConnection(serverPort, consts.RandomMessage())
 	for message := range client.ReconnectChannel {
 		if message == "" {
 			break
 		}
-		go client.Routine(serverPort, message)
+		go client.HandleConnection(serverPort, message)
 	}
 	waitGroup.Done()
 }
