@@ -5,6 +5,7 @@ import (
 	consts "bringyour-test/pkgs/consts"
 	msg "bringyour-test/pkgs/models"
 	"log"
+	"math/rand"
 	"sync"
 	"time"
 )
@@ -25,7 +26,7 @@ func Create(index int) *Client {
 	}
 }
 
-func (client *Client) HandleConnection(serverPort string, message string, sessionTime int) {
+func (client *Client) HandleConnection(serverPort string, message string, sessionTime int, delayTime int) {
 	// Connect to the TCP server
 	handler, err := conn.Create(":" + serverPort)
 	if err != nil {
@@ -93,6 +94,8 @@ func (client *Client) HandleConnection(serverPort string, message string, sessio
 				receivedMessage.Prefix = "ok"
 			}
 			if receivedMessage.Prefix == "ok" {
+				randTime := rand.Intn(delayTime) + 1
+				time.Sleep(time.Second * time.Duration(randTime))
 				handler.Send(receivedMessage)
 			}
 			log.Printf("Client %d sent %s.\n", client.Index, consts.ShortMessage(receivedMessage))
@@ -112,13 +115,13 @@ func (client *Client) HandleConnection(serverPort string, message string, sessio
 	}
 }
 
-func (client *Client) Run(serverPort string, waitGroup *sync.WaitGroup, sessionTime int) {
-	go client.HandleConnection(serverPort, consts.RandomMessage(), sessionTime)
+func (client *Client) Run(serverPort string, waitGroup *sync.WaitGroup, sessionTime int, delayTime int) {
+	go client.HandleConnection(serverPort, consts.RandomMessage(), sessionTime, delayTime)
 	for message := range client.ReconnectChannel {
 		if message == "" {
 			break
 		}
-		go client.HandleConnection(serverPort, message, sessionTime)
+		go client.HandleConnection(serverPort, message, sessionTime, delayTime)
 	}
 	waitGroup.Done()
 }

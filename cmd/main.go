@@ -37,6 +37,11 @@ func main() {
 		log.Println("Failed to load enviroment.")
 		return
 	}
+	delayTime, err := strconv.Atoi(os.Getenv("DELAY_TIME"))
+	if err != nil {
+		log.Println("Failed to load enviroment.")
+		return
+	}
 
 	server := srv.Create()
 	go server.Run(serverPort)
@@ -58,7 +63,7 @@ func main() {
 	// Run clients
 	randCount := rand.Intn(80)
 	for index, client := range clients {
-		go client.Run(serverPort, &waitGroup, sessionTime)
+		go client.Run(serverPort, &waitGroup, sessionTime, delayTime)
 		if index == randCount {
 			randTime := rand.Intn(55) + 5
 			time.Sleep(time.Second * time.Duration(randTime))

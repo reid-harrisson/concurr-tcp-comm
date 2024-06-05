@@ -28,6 +28,7 @@ func TestClient(t *testing.T) {
 		return
 	}
 	sessionTime := 10
+	delayTime := 5
 
 	server := srv.Create()
 	go server.Run(serverPort)
@@ -48,7 +49,7 @@ func TestClient(t *testing.T) {
 
 	// Run clients
 	for _, client := range clients {
-		go client.Run(serverPort, &waitGroup, sessionTime)
+		go client.Run(serverPort, &waitGroup, sessionTime, delayTime)
 	}
 
 	// Wait for all clients finished
