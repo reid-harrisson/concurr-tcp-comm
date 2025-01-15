@@ -1,4 +1,4 @@
-# CONCURRENT TCP COMMUNICATION
+# Concurrent TCP Communication
 
 ## Requirements
 
