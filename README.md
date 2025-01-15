@@ -1,7 +1,4 @@
-# bringyour-test
-
-This is the home assignment for BringYour hiring process.
-This app is developed by GoLang.
+# CONCURRENT TCP COMMUNICATION
 
 ## Requirements
 
